@@ -6,6 +6,9 @@ import pandas as pd
 from PIL import Image
 import os
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+import numpy as np
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -108,7 +111,7 @@ class ConvNN(nn.Module):
 
         
 model = ConvNN().to(device)
-epochs = 15
+epochs = 10
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0012)
 
@@ -135,3 +138,30 @@ for epoch in range(epochs):
         print(f'Epoch [{epoch + 1}/{epochs}] Validation Loss: {average_loss:.4f}')
         
 
+Path =  'model_weights.pth'      
+torch.save(model.state_dict(),Path)
+
+# Testing loop
+model.eval()
+with torch.no_grad():
+    all_predictions = []
+    all_labels = []
+    total_loss = 0
+    for images, labels in test_dataloader:
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        total_loss += loss.item()
+
+        # Append predictions and labels for later evaluation
+        all_predictions.append(outputs.cpu().numpy())
+        all_labels.append(labels.cpu().numpy())
+
+    average_loss = total_loss / len(test_dataloader)
+    print(f'Validation Loss: {average_loss:.4f}')
+
+# Calculate and print additional evaluation metrics
+all_predictions = np.concatenate(all_predictions)
+all_labels = np.concatenate(all_labels)
+
+mse = mean_squared_error(all_labels, all_predictions)
+print(f'Mean Squared Error (MSE): {mse:.4f}')
